@@ -11,7 +11,7 @@ imgsz: 640
 save: true
 save_period: -1
 cache: false
-device: mps
+device: cpu
 workers: 8
 project: null
 name: train
@@ -37,7 +37,6 @@ dropout: 0.0
 val: true
 split: val
 save_json: false
-save_hybrid: false
 conf: null
 iou: 0.7
 max_det: 300
@@ -97,11 +96,11 @@ fliplr: 0.5
 bgr: 0.0
 mosaic: 1.0
 mixup: 0.0
+cutmix: 0.0
 copy_paste: 0.0
 copy_paste_mode: flip
 auto_augment: randaugment
 erasing: 0.4
-crop_fraction: 1.0
 cfg: null
 tracker: botsort.yaml
-save_dir: runs/detect/train
+save_dir: runs\detect\train
