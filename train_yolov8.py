@@ -1,9 +1,9 @@
 from ultralytics import YOLO
 
-# Define the model size (n, s, m, l, x)
-model = YOLO('yolov8n.pt')  # Load a pretrained YOLOv8 nano model
 
-# Train the model using your dataset
+model = YOLO('yolov8n.pt')  
+
+
 results = model.train(
     data='LISA-traffic-light-detection/data.yaml',
     epochs=20,           # Number of training epochs
@@ -11,11 +11,11 @@ results = model.train(
     batch=16,             # Batch size
     patience=20,          # Early stopping patience
     save=True,            # Save training results
-    device='cpu'            # GPU device (use 'cpu' if no GPU available)
+    device='cpu'            # GPU device 
 )
 
 # Validate the model on the validation set
 results = model.val()
 
-# Export the model to ONNX format (optional)
+
 model.export(format='onnx')
