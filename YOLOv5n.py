@@ -5,6 +5,7 @@ import os
 import glob
 from ultralytics import YOLO
 from pathlib import Path
+import shutil # Import the shutil library for robust file copying
 
 def apply_standard_clahe(image_path, clip_limit=2.0, tile_grid_size=(8, 8)):
     """
@@ -37,7 +38,6 @@ def apply_standard_clahe(image_path, clip_limit=2.0, tile_grid_size=(8, 8)):
     enhanced_gray = clahe.apply(gray_img)
     
     # Convert the enhanced grayscale image back to a 3-channel BGR image
-    # so it can be used by YOLO, which expects 3-channel input.
     enhanced_bgr = cv2.cvtColor(enhanced_gray, cv2.COLOR_GRAY2BGR)
 
     return enhanced_bgr
@@ -70,7 +70,8 @@ def preprocess_dataset_yolov5(input_dir, output_dir, extensions=('*.jpg', '*.png
                 label_path = Path(input_dir) / subdir / 'labels' / (Path(image_path).stem + '.txt')
                 if label_path.exists():
                     output_label_path = output_subdir_labels / label_path.name
-                    os.system(f'copy "{label_path}" "{output_label_path}"') # Use 'cp' on Linux/macOS
+                    # --- FIX 2: Using shutil.copy for robustness ---
+                    shutil.copy(str(label_path), str(output_label_path))
 
     print("YOLOv5 dataset preprocessing complete.")
 
@@ -79,14 +80,16 @@ def create_processed_yaml_v5(original_yaml_path, new_yaml_path, processed_data_d
     with open(original_yaml_path, 'r') as f:
         data = yaml.safe_load(f)
     
-    data['path'] = os.path.abspath(processed_data_dir)
-    data['train'] = os.path.join(processed_data_dir, 'train', 'images')
-    data['val'] = os.path.join(processed_data_dir, 'valid', 'images')
-    data['test'] = os.path.join(processed_data_dir, 'test', 'images')
+    # --- FIX 1: Use relative paths for the dataset YAML file ---
+    data.pop('path', None) # Remove the absolute path key
+    data['train'] = './train/images'
+    data['val'] = './valid/images'
+    data['test'] = './test/images'
+    # --- END FIX 1 ---
 
     with open(new_yaml_path, 'w') as f:
         yaml.dump(data, f, default_flow_style=False)
-    print(f"Created new YAML file for YOLOv5 at '{new_yaml_path}'")
+    print(f"Created new YAML file for YOLOv5 at '{new_yaml_path}' with corrected relative paths.")
 
 
 def main():

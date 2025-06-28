@@ -5,6 +5,7 @@ import os
 import glob
 from ultralytics import YOLO
 from pathlib import Path
+import shutil # Import the shutil library for robust file copying
 
 def apply_clahe_ycrcb(image_path, clip_limit=4.0, tile_grid_size=(8, 8)):
     """
@@ -87,13 +88,15 @@ def preprocess_dataset(input_dir, output_dir, extensions=('*.jpg', '*.png', '*.j
                 label_path = Path(input_dir) / subdir / 'labels' / (Path(image_path).stem + '.txt')
                 if label_path.exists():
                     output_label_path = output_subdir_labels / label_path.name
-                    os.system(f'copy "{label_path}" "{output_label_path}"') # Use 'cp' on Linux/macOS
+                    # --- FIX 2: Using shutil.copy for robustness ---
+                    shutil.copy(str(label_path), str(output_label_path))
     
     print("Dataset preprocessing complete.")
 
 def create_processed_yaml(original_yaml_path, new_yaml_path, processed_data_dir):
     """
-    Creates a new data.yaml file for the processed dataset.
+    Creates a new data.yaml file for the processed dataset using relative paths.
+    This is the corrected function to fix the "Dataset not found" error.
     
     Args:
         original_yaml_path (str): Path to the original data.yaml file.
@@ -103,15 +106,18 @@ def create_processed_yaml(original_yaml_path, new_yaml_path, processed_data_dir)
     with open(original_yaml_path, 'r') as f:
         data = yaml.safe_load(f)
     
-    # Update paths to point to the new preprocessed dataset location
-    data['path'] = os.path.abspath(processed_data_dir)
-    data['train'] = os.path.join(processed_data_dir, 'train', 'images')
-    data['val'] = os.path.join(processed_data_dir, 'valid', 'images')
-    data['test'] = os.path.join(processed_data_dir, 'test', 'images')
+    # --- FIX 1: Use relative paths for the dataset YAML file ---
+    # This prevents the path duplication error during training.
+    data.pop('path', None) # Remove the absolute path key
+    data['train'] = './train/images'
+    data['val'] = './valid/images'
+    data['test'] = './test/images'
+    # --- END FIX 1 ---
 
     with open(new_yaml_path, 'w') as f:
         yaml.dump(data, f, default_flow_style=False)
-    print(f"Created new YAML file at '{new_yaml_path}'")
+    print(f"Created new YAML file at '{new_yaml_path}' with corrected relative paths.")
+
 
 def main():
     # --- 1. Preprocessing Step ---

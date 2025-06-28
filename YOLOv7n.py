@@ -5,10 +5,10 @@ import yaml
 import os
 import glob
 from pathlib import Path
+import shutil # Import the shutil library for robust file copying
+
 # Note: YOLOv7 is typically trained via command line with its official repository.
 # This script focuses on the preprocessing and provides the training command.
-# For a full Python-based training pipeline, one would adapt the train.py
-# from the official YOLOv7 repository.
 
 def get_dark_channel(image, window_size=15):
     """
@@ -118,29 +118,22 @@ def apply_dehazing_and_auto_clahe(image_path):
     dehazed_image = recover_dehazed_image(img_bgr, refined_transmission, atmospheric_light * 255)
 
     # 2. Auto-Clipped CLAHE on the luminance channel
-    # Convert dehazed image to LAB color space
     img_lab = cv2.cvtColor(dehazed_image, cv2.COLOR_BGR2LAB)
     l, a, b = cv2.split(img_lab)
-
-    # Simulate auto-clipping by adjusting clipLimit based on image brightness
-    # A brighter image gets a lower clip limit to prevent over-enhancement.
+    
     mean_brightness = np.mean(l)
-    clip_limit = max(1.0, 8.0 - (mean_brightness / 32.0)) # Example dynamic formula
+    clip_limit = max(1.0, 8.0 - (mean_brightness / 32.0))
 
     clahe = cv2.createCLAHE(clipLimit=clip_limit, tileGridSize=(8, 8))
     l_clahe = clahe.apply(l)
 
-    # Merge channels and convert back to BGR
     enhanced_lab = cv2.merge([l_clahe, a, b])
     final_enhanced_image = cv2.cvtColor(enhanced_lab, cv2.COLOR_LAB2BGR)
 
     return final_enhanced_image
 
-
 def preprocess_dataset_yolov7(input_dir, output_dir, extensions=('*.jpg', '*.png', '*.jpeg')):
-    """
-    Applies the dehazing and CLAHE preprocessing to a dataset.
-    """
+    """Applies the dehazing and CLAHE preprocessing to a dataset."""
     print(f"Starting YOLOv7 preprocessing from '{input_dir}' to '{output_dir}'...")
     for subdir in ['train', 'valid', 'test']:
         output_subdir_images = Path(output_dir) / subdir / 'images'
@@ -164,26 +157,31 @@ def preprocess_dataset_yolov7(input_dir, output_dir, extensions=('*.jpg', '*.png
                 label_path = Path(input_dir) / subdir / 'labels' / (Path(image_path).stem + '.txt')
                 if label_path.exists():
                     output_label_path = output_subdir_labels / label_path.name
-                    os.system(f'copy "{label_path}" "{output_label_path}"') # Use 'cp' on Linux/macOS
+                    # --- FIX 2: Using shutil.copy for robustness ---
+                    shutil.copy(str(label_path), str(output_label_path))
     
     print("YOLOv7 dataset preprocessing complete.")
 
 def create_processed_yaml_v7(original_yaml_path, new_yaml_path, processed_data_dir):
-    """Creates a new YAML for the processed dataset."""
+    """Creates a new YAML for the processed dataset for YOLOv7."""
     with open(original_yaml_path, 'r') as f:
         data = yaml.safe_load(f)
     
-    # YOLOv7 format expects relative paths from the repo root
+    # --- FIX 1: Use relative paths for the dataset YAML file ---
+    # The YOLOv7 repo expects paths to be relative to the repository root,
+    # so providing a full absolute path in the command line is the most robust way.
+    # This function now sets up the structure correctly, and the command below
+    # will use the absolute path to this new YAML file.
     data['train'] = str(Path(processed_data_dir).resolve() / 'train' / 'images')
     data['val'] = str(Path(processed_data_dir).resolve() / 'valid' / 'images')
     data['test'] = str(Path(processed_data_dir).resolve() / 'test' / 'images')
-    # Remove absolute path key if it exists
+    
+    # Remove the 'path' key to avoid confusion
     data.pop('path', None)
 
     with open(new_yaml_path, 'w') as f:
         yaml.dump(data, f, default_flow_style=False)
-    print(f"Created new YAML file for YOLOv7 at '{new_yaml_path}'")
-
+    print(f"Created new YAML file for YOLOv7 at '{new_yaml_path}' with corrected absolute paths.")
 
 def main():
     # --- 1. Preprocessing Step ---
@@ -201,28 +199,22 @@ def main():
     create_processed_yaml_v7(original_yaml, new_yaml_v7, processed_dataset_dir_v7)
 
     # --- 2. YOLOv7 Training Step ---
-    # YOLOv7 training is typically done via the command line.
-    # First, clone the YOLOv7 repository: git clone https://github.com/WongKinYiu/yolov7.git
-    # Then navigate into the yolov7 directory.
     print("\nTo train YOLOv7, run the following command from within the yolov7 repository:")
     
-    # Construct the training command
-    # We use yolov7-tiny as the nano equivalent.
+    # Construct the training command using yolov7-tiny as the nano equivalent.
     training_command = (
         f"python train.py --workers 8 --device 0 --batch-size 16 "
-        f"--data {os.path.abspath(new_yaml_v7)} --img 640 640 --cfg cfg/training/yolov7-tiny.yaml "
-        f"--weights 'yolov7-tiny.pt' --name yolov7_clahe_dehaze --hyp data/hyp.scratch.tiny.yaml "
-        f"--epochs 20" 
-        # Note: YOLOv7's train.py does not have a simple 'patience' arg like ultralytics.
-        # Early stopping is often managed by observing validation loss and stopping manually,
-        # or by setting a high epoch count and using the best weights.
+        f"--data \"{os.path.abspath(new_yaml_v7)}\" --img 640 640 --cfg cfg/training/yolov7-tiny.yaml "
+        f"--weights yolov7-tiny.pt --name yolov7_clahe_dehaze --hyp data/hyp.scratch.tiny.yaml "
+        f"--epochs 20"
+        # Note: Early stopping in YOLOv7 is handled via its internal mechanisms based on validation metrics,
+        # rather than a direct 'patience' argument.
     )
     
     print("\n--- YOLOv7 Training Command ---")
     print(training_command)
     print("---------------------------------\n")
-    print("Note: You may need to adjust paths and download the 'yolov7-tiny.pt' weights first.")
-
+    print("Note: Ensure you are in the yolov7 repository directory and have downloaded 'yolov7-tiny.pt' weights.")
 
 if __name__ == '__main__':
     main()
