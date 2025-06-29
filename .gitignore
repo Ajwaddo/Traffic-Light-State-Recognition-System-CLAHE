@@ -1,3 +1,7 @@
 LISA-traffic-light-detection/
 LISA-processed-yolov8/
+LISA-processed-yolov8-3/
+LISA-traffic-light-detection-3/
+LISA-processed-yolov7-3/
 runs/
+deprecated/
