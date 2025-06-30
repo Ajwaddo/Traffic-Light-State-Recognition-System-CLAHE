@@ -8,10 +8,7 @@ from pathlib import Path
 import shutil 
 
 def apply_clahe_ycrcb(image_path, clip_limit=4.0, tile_grid_size=(8, 8)):
-    """
-    Applies Contrast Limited Adaptive Histogram Equalization (CLAHE) to the
-    luminance (Y) channel of an image in the YCrCb color space.
-    """
+    # Applies Contrast Limited Adaptive Histogram Equalization (CLAHE) to the luminance (Y) channel of an image in the YCrCb color space.
     img_bgr = cv2.imread(image_path)
     if img_bgr is None:
         print(f"Warning: Could not read image at {image_path}")
@@ -25,9 +22,7 @@ def apply_clahe_ycrcb(image_path, clip_limit=4.0, tile_grid_size=(8, 8)):
     return enhanced_bgr
 
 def preprocess_dataset(input_dir, output_dir, extensions=('*.jpg', '*.png', '*.jpeg')):
-    """
-    Applies the CLAHE preprocessing to all images in a directory.
-    """
+    # Applies the CLAHE preprocessing to all images in a directory.
     print(f"Starting preprocessing from '{input_dir}' to '{output_dir}'...")
     for subdir in ['train', 'valid', 'test']:
         output_subdir_images = Path(output_dir) / subdir / 'images'
@@ -54,9 +49,8 @@ def preprocess_dataset(input_dir, output_dir, extensions=('*.jpg', '*.png', '*.j
     print("Dataset preprocessing complete.")
 
 def create_processed_yaml(original_yaml_path, new_yaml_path):
-    """
-    Creates a new data.yaml file for the processed dataset using relative paths.
-    """
+    # Creates a new data.yaml file for the processed dataset using relative paths.
+    
     with open(original_yaml_path, 'r') as f:
         data = yaml.safe_load(f)
     
@@ -90,9 +84,9 @@ def main():
         results = model.train(
             data=new_yaml,
             epochs=10,
-            imgsz=320,      # MODIFIED for faster training
-            batch=8,        # MODIFIED for lower CPU/memory load
-            workers=2,      # MODIFIED to speed up data loading
+            imgsz=320,      
+            batch=8,        
+            workers=2,      
             patience=3,
             name='yolov8n_clahe_ycrcb_fast_cpu'
         )
